@@ -407,16 +407,22 @@
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px">
                     <input id="nome" placeholder="Nome Completo">
                     <input id="cpf" placeholder="CPF" oninput="mascaraCPF(this)" maxlength="14">
+                    <input id="contato" placeholder="Contato (WhatsApp/Celular)" oninput="mascaraTelefone(this)" maxlength="15">
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-top: 5px;">
                     <select id="setor">
                         <option value="" disabled selected>Setor</option>
-                        <option value="ADM-RH">ADM-RH</option><option value="ADM-COMERCIAL">ADM-COMERCIAL</option>
-                        <option value="ADM-TI">ADM-TI</option><option value="ADM-COBRANÇA">ADM-COBRANÇA</option>
-                        <option value="ADM-FINANCEIRO">ADM-FINANCEIRO</option><option value="LOGISTICA">LOGISTICA</option>
-                        <option value="MOTORISTAS">MOTORISTAS</option>
+                        <option value="ADMINISTRATIVO/ADMINISTRAÇÃO">ADMINISTRATIVO/ADMINISTRAÇÃO</option>
+                        <option value="COMERCIAL/MERCHANDISING">COMERCIAL/MERCHANDISING</option>
+                        <option value="DEPOSITO/LOGÍSTICA">DEPOSITO/LOGÍSTICA</option>
+                        <option value="TRANSPORTE">TRANSPORTE</option>
                     </select>
-                    <select id="tipo"><option value="Moto">Moto</option><option value="Carro">Carro</option></select>
+                    <select id="tipo">
+                        <option value="BICICLETA">BICICLETA</option>
+                        <option value="CARRO">CARRO</option>
+                        <option value="MOTO">MOTO</option>
+                        <option value="MOTONETA">MOTONETA</option>
+                    </select>
                     <input id="modelo" placeholder="Modelo (Ex: Titan 160)">
                     <input id="placa" placeholder="Placa">
                 </div>
@@ -440,16 +446,16 @@
                         <label>SETOR</label>
                         <select id="filtroSetorCad" onchange="listarPessoas()">
                             <option value="TODOS">TODOS SETORES</option>
-                            <option value="ADM-RH">ADM-RH</option><option value="ADM-COMERCIAL">ADM-COMERCIAL</option>
-                            <option value="ADM-TI">ADM-TI</option><option value="ADM-COBRANÇA">ADM-COBRANÇA</option>
-                            <option value="ADM-FINANCEIRO">ADM-FINANCEIRO</option><option value="LOGISTICA">LOGISTICA</option>
-                            <option value="MOTORISTAS">MOTORISTAS</option>
+                            <option value="ADMINISTRATIVO/ADMINISTRAÇÃO">ADMINISTRATIVO/ADMINISTRAÇÃO</option>
+                            <option value="COMERCIAL/MERCHANDISING">COMERCIAL/MERCHANDISING</option>
+                            <option value="DEPOSITO/LOGÍSTICA">DEPOSITO/LOGÍSTICA</option>
+                            <option value="TRANSPORTE">TRANSPORTE</option>
                         </select>
                     </div>
                 </div>
 
                 <table id="tabelaPessoas">
-                    <thead><tr><th>#</th><th>Nome</th><th>Setor</th><th>Modelo</th><th>Placa</th><th>Ações</th></tr></thead>
+                    <thead><tr><th>#</th><th>Nome</th><th>Setor</th><th>Contato</th><th>Modelo</th><th>Placa</th><th>Ações</th></tr></thead>
                     <tbody id="corpoTabelaPessoas"></tbody>
                 </table>
             </div>
@@ -499,11 +505,11 @@
                     <div><label>Fim</label><input type="date" id="histDataFim"></div>
                     <div><label>Setor</label>
                         <select id="histSetor">
-                            <option value="TODOS">TODOS</option><option value="ADM-GERAL">ADM GERAL</option>
-                            <option value="ADM-RH">ADM-RH</option><option value="ADM-COMERCIAL">ADM-COMERCIAL</option>
-                            <option value="ADM-TI">ADM-TI</option><option value="ADM-COBRANÇA">ADM-COBRANÇA</option>
-                            <option value="ADM-FINANCEIRO">ADM-FINANCEIRO</option><option value="LOGISTICA">LOGISTICA</option>
-                            <option value="MOTORISTAS">MOTORISTAS</option>
+                            <option value="TODOS">TODOS</option>
+                            <option value="ADMINISTRATIVO/ADMINISTRAÇÃO">ADMINISTRATIVO/ADMINISTRAÇÃO</option>
+                            <option value="COMERCIAL/MERCHANDISING">COMERCIAL/MERCHANDISING</option>
+                            <option value="DEPOSITO/LOGÍSTICA">DEPOSITO/LOGÍSTICA</option>
+                            <option value="TRANSPORTE">TRANSPORTE</option>
                         </select>
                     </div>
                     <button class="btn-action" onclick="listar()"><i class="fas fa-filter"></i></button>
@@ -650,6 +656,15 @@
         else input.value = v;
     }
 
+    function mascaraTelefone(input) {
+        let v = input.value.replace(/\D/g, "");
+        if (v.length > 11) v = v.slice(0, 11);
+        if (v.length > 10) input.value = v.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+        else if (v.length > 6) input.value = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
+        else if (v.length > 2) input.value = v.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+        else input.value = v;
+    }
+
     function configurarDatasPadrao() {
         const now = new Date();
         const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -674,6 +689,7 @@
         const btn = document.getElementById("btnCadastrarPessoa");
         const n = document.getElementById("nome").value.trim();
         const c = document.getElementById("cpf").value.trim();
+        const tel = document.getElementById("contato").value.trim();
         const s = document.getElementById("setor").value;
         const t = document.getElementById("tipo").value;
         const m = document.getElementById("modelo").value.trim();
@@ -682,14 +698,28 @@
         
         if(!n || !p || !c || !s) { showMsg("Preencha os campos obrigatórios."); return; }
         btn.disabled = true; btn.innerText = "Processando...";
+        
+        // Remove contato from payload initially to prevent schema error if not created yet
         const payload = { nome: n, cpf: c, setor: s, tipo: t, modelo: m, placa: p };
         
+        // Only add contato to payload if it's not empty, trying to save it. 
+        // If it fails due to schema, we will catch it below.
+        if (tel) {
+             payload.contato = tel;
+        }
+
         try {
             const { error } = eid 
                 ? await supabaseClient.from('pessoas').update(payload).eq('id', eid)
                 : await supabaseClient.from('pessoas').insert([payload]);
             
-            if(error) showMsg("Erro: " + error.message);
+            if(error) {
+                if(error.message.includes("Could not find the 'contato' column")) {
+                    showMsg("Crie a coluna 'contato' (tipo text) no Supabase!");
+                } else {
+                    showMsg("Erro: " + error.message);
+                }
+            }
             else { showMsg(eid ? "Atualizado!" : "Salvo!"); limparCamposPessoa(); listarPessoas(); }
         } catch (e) { showMsg("Falha na conexão."); } finally { btn.disabled = false; }
     }
@@ -720,6 +750,7 @@
                 <td data-label="#">${index + 1}</td>
                 <td data-label="Nome">${p.nome || ''}</td>
                 <td data-label="Setor">${p.setor || ''}</td>
+                <td data-label="Contato">${p.contato || '-'}</td>
                 <td data-label="Modelo">${p.modelo || '-'}</td>
                 <td data-label="Placa"><strong>${p.placa || ''}</strong></td>
                 <td data-label="Ações">
@@ -740,6 +771,7 @@
         document.getElementById("editIdPessoa").value = p.id;
         document.getElementById("nome").value = p.nome || "";
         document.getElementById("cpf").value = p.cpf || "";
+        document.getElementById("contato").value = p.contato || "";
         document.getElementById("setor").value = p.setor || "";
         document.getElementById("tipo").value = p.tipo || "";
         document.getElementById("modelo").value = p.modelo || "";
@@ -767,6 +799,7 @@
     function limparCamposPessoa() {
         document.getElementById("editIdPessoa").value = "";
         document.getElementById("nome").value = ""; document.getElementById("cpf").value = "";
+        document.getElementById("contato").value = "";
         document.getElementById("modelo").value = ""; document.getElementById("placa").value = ""; 
         document.getElementById("btnCancelarPessoa").style.display = "none";
         document.getElementById("btnCadastrarPessoa").innerText = "Salvar Proprietário";
@@ -889,8 +922,7 @@
             if(fIni && d < fIni) return false;
             if(fFim && d > fFim) return false;
             if(fSet !== "TODOS") {
-                if(fSet === "ADM-GERAL") { if(!(a.setor || "").startsWith("ADM")) return false; }
-                else if(a.setor !== fSet) return false;
+                if(a.setor !== fSet) return false;
             }
             return true;
         }).reverse().forEach(a => {
@@ -1001,7 +1033,6 @@
 
     function toggleMenu(event, id) { if(event) event.stopPropagation(); const m = document.getElementById(`menu-${id}`); if(!m) return; const act = m.classList.contains('active'); fecharTodosMenus(); if(!act) m.classList.add('active'); }
     function fecharTodosMenus() { document.querySelectorAll('.menu-opcoes, .theme-menu').forEach(m => m.classList.remove('active')); }
-    function toggleThemeMenu(event) { event.stopPropagation(); document.getElementById('theme-menu').classList.toggle('active'); }
     function abrirModal(u) { if(!u) return; document.getElementById("imgModal").src = u; document.getElementById("modal").style.display = "flex"; }
     function fecharModal() { document.getElementById("modal").style.display = "none"; }
     function fecharModalDetalhes() { document.getElementById("modalDetalhes").style.display = "none"; }
